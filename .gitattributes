@@ -1,0 +1,4 @@
+# By default, always convert line endings to unix line endings.
+* text=auto
+*.md text
+*.py text

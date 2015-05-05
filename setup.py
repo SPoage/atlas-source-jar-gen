@@ -18,4 +18,4 @@ setup(name='atlassiansourcegen',
       author='Shane Poage',
       packages=find_packages(),
       entry_points={'console_scripts': ['atlas-source-gen=atlassiansourcegen.main:run']},
-      install_requires=['mavpy'])
+      install_requires=['mavpy', 'robobrowser'])

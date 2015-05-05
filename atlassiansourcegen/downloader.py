@@ -17,7 +17,7 @@ SOURCE_DOWNLOAD_BASE = MY_ATLASSIAN + '/download/source'
 
 
 VERSION_EXTRACT_REGEX = re.compile(r'^(?P<version>(\d+)\.(\d+)\.(\d+)?)' +
-                                   r' Source \((?P<type>(ZIP|(TAR\.GZ))) Archive\)$')
+                                   r' Source \((?P<type>(ZIP|(TAR\.GZ)))( Archive)?\)$')
 
 
 class AtlassianSourceDownloadError(Exception):
@@ -29,7 +29,7 @@ class AtlassianSourceArchiveError(Exception):
         super().__init__("'%s' is not an accepted archive type." % archive_type, *args, **kwargs)
 
 
-def select_archive_type(provided_type):
+def select_archive_type(app, provided_type):
     archive_type = provided_type
     if isinstance(archive_type, str):
         archive_type = archive_type.lower()
@@ -39,6 +39,9 @@ def select_archive_type(provided_type):
     if archive_type is None:
         # todo: verify that tarfile works on windows and default windows to zip if not
         archive_type = 'tar'
+    if app == 'stash':
+        # only zip archives are provided for Stash for some reason.
+        archive_type = 'zip'
     return archive_type
 
 
@@ -52,15 +55,6 @@ def get_archive_object(archive_type, archive_path):
     if archive_type == 'zip':
         return ZipFile(archive_path)
     raise AtlassianSourceArchiveError("'%s' is not an accepted archive type." % archive_type)
-
-
-def get_archive_top_dirs(archive_type, archive_obj):
-    if archive_type == 'tar':
-        return list({os.path.split(d)[0] for d in archive_obj.getnames()})
-    if archive_type == 'zip':
-        return list({os.path.split(d)[0] for d in archive_obj.namelist()})
-        return [m for m in archive_obj.namelist() if len(m.strip(os.path.sep).split(os.path.sep)) == 1]
-    raise AtlassianSourceArchiveError(archive_type)
 
 
 def get_source(app, version, username, password,
@@ -79,7 +73,7 @@ def get_source(app, version, username, password,
     versions = browser.select('table#source-download-table tr.smallish')
     row_number = 0
     version_download_map = {}
-    archive_type = select_archive_type(archive_type)
+    archive_type = select_archive_type(app, archive_type)
     archive_extension = get_archive_extension(archive_type)
     for version_row in versions:
         row_number += 1
@@ -109,7 +103,6 @@ def get_source(app, version, username, password,
             pass
     # blow up if the version requested isn't in the list
     if version not in version_download_map:
-        print(version_download_map)
         raise AtlassianSourceDownloadError("Unable to find version '%s' on Atlassian source site."
                                            % version)
     # set the default unpack dir if it wasn't provided and create it if it doesn't exist
@@ -132,7 +125,6 @@ def get_source(app, version, username, password,
         os.makedirs(version_dir_path, exist_ok=True)
         top_dirs = list(set(d.split(os.path.sep)[0] for d in src.namelist()))
         if len(top_dirs) != 1:
-            print(top_dirs)
             raise AtlassianSourceDownloadError("Couldn't unpack archive - unexpected contents.")
         # extract the archive to a temporary location that we can move from later if all goes well
         top_level_dir_name = top_dirs[0]

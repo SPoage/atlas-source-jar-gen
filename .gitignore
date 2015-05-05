@@ -5,7 +5,7 @@ venv
 .*.swp
 .idea
 # build stuff
+dist
+build
 target
 *.egg-info
-# other
-versions
